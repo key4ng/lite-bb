@@ -35,12 +35,16 @@ pub struct Config {
 impl Config {
     pub fn config_dir() -> PathBuf {
         if let Ok(dir) = std::env::var("BB_CONFIG_DIR") {
-            PathBuf::from(dir)
-        } else {
-            dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from("~/.config"))
-                .join("bb")
+            return PathBuf::from(dir);
         }
+        // Follow XDG Base Directory spec: ~/.config/bb
+        if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+            return PathBuf::from(xdg).join("bb");
+        }
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("~"))
+            .join(".config")
+            .join("bb")
     }
 
     pub fn config_path() -> PathBuf {
