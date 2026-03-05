@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod pr;
+pub mod search;
 
 use clap::Subcommand;
 
@@ -15,11 +16,17 @@ pub enum Commands {
         #[command(subcommand)]
         command: pr::PrCommands,
     },
+    /// Search code
+    Search {
+        #[command(subcommand)]
+        command: search::SearchCommands,
+    },
 }
 
 pub async fn run(command: Commands) -> anyhow::Result<()> {
     match command {
         Commands::Auth { command } => auth::run(command).await,
         Commands::Pr { command } => pr::run(command).await,
+        Commands::Search { command } => search::run(command).await,
     }
 }

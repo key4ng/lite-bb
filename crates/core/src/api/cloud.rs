@@ -1,6 +1,7 @@
 use crate::api::client::{ApiError, HttpClient};
 use crate::auth::Credentials;
 use crate::config::Provider;
+use crate::models::search::{CloudSearchResponse, CodeResult};
 use crate::models::*;
 
 const BASE_URL: &str = "https://api.bitbucket.org/2.0";
@@ -168,5 +169,48 @@ impl CloudClient {
     ) -> Result<Paginated<BuildStatus>, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/statuses"));
         self.http.get(&url).await
+    }
+
+    /// Search code within a workspace, optionally scoped to a repo.
+    /// Cloud: GET /2.0/workspaces/{workspace}/search/code?search_query=...
+    pub async fn search_code(
+        &self,
+        workspace: &str,
+        repo: Option<&str>,
+        query: &str,
+        limit: u32,
+        extension: Option<&str>,
+        filename: Option<&str>,
+    ) -> Result<Vec<CodeResult>, ApiError> {
+        // Build search query with optional qualifiers
+        let mut full_query = query.to_string();
+        if let Some(ext) = extension {
+            full_query.push_str(&format!(" extension:\"{ext}\""));
+        }
+        if let Some(fname) = filename {
+            full_query.push_str(&format!(" file:\"{fname}\""));
+        }
+
+        let url = format!(
+            "{}/workspaces/{}/search/code?search_query={}&pagelen={}",
+            self.base_url,
+            workspace,
+            urlencoding::encode(&full_query),
+            limit
+        );
+
+        let url = if let Some(r) = repo {
+            format!("{}&scopes={}", url, urlencoding::encode(r))
+        } else {
+            url
+        };
+
+        let resp: CloudSearchResponse = self.http.get(&url).await?;
+        let repo_label = repo.unwrap_or(workspace).to_string();
+        Ok(resp
+            .values
+            .into_iter()
+            .map(|r| r.into_code_result(repo_label.clone()))
+            .collect())
     }
 }

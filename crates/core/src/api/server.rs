@@ -1,6 +1,10 @@
 use crate::api::client::{ApiError, HttpClient};
 use crate::auth::Credentials;
 use crate::config::Provider;
+use crate::models::search::{
+    CodeResult, ServerCodeEntity, ServerSearchEntities, ServerSearchRequest, ServerSearchResponse,
+    ServerSearchScope,
+};
 use crate::models::server::*;
 use crate::models::*;
 
@@ -268,5 +272,57 @@ impl ServerClient {
         );
         let result: DcPaginated<DcBuildStatus> = self.http.get(&url).await?;
         Ok(result.into_paginated(BuildStatus::from))
+    }
+
+    /// Search code on Bitbucket Server/DC.
+    /// POST /rest/search/latest/search
+    /// Scope to a repo with `repo = Some("~username/repo-slug")` or `Some("PROJECT/repo-slug")`.
+    pub async fn search_code(
+        &self,
+        repo: Option<&str>,
+        query: &str,
+        limit: u32,
+        extension: Option<&str>,
+        filename: Option<&str>,
+    ) -> Result<Vec<CodeResult>, ApiError> {
+        let mut full_query = query.to_string();
+        if let Some(ext) = extension {
+            full_query.push_str(&format!(" extension:{ext}"));
+        }
+        if let Some(fname) = filename {
+            full_query.push_str(&format!(" file:{fname}"));
+        }
+
+        // Build scope: repo slug is the key; project key is derived from workspace prefix
+        let scopes = repo.map(|r| {
+            let repo_slug = r.split('/').last().unwrap_or(r);
+            vec![ServerSearchScope {
+                scope_type: "REPOSITORY".to_string(),
+                key: repo_slug.to_string(),
+            }]
+        });
+
+        let search_base = self.base_url.trim_end_matches("/rest/api/1.0");
+        let url = format!("{}/rest/search/latest/search", search_base);
+
+        let body = ServerSearchRequest {
+            query: full_query,
+            entities: ServerSearchEntities {
+                code: ServerCodeEntity { start: 0, limit },
+            },
+            scopes,
+        };
+
+        let resp: ServerSearchResponse = self.http.post(&url, &body).await?;
+        let results = resp
+            .code
+            .map(|page| {
+                page.values
+                    .into_iter()
+                    .map(|r| r.into_code_result())
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(results)
     }
 }

@@ -1,3 +1,4 @@
+pub mod search;
 pub mod server;
 
 use serde::{Deserialize, Serialize};
