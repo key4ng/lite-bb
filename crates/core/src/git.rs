@@ -32,7 +32,7 @@ pub fn current_branch() -> Result<String, GitError> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-pub fn repo_context_from_remote() -> Result<RepoContext, GitError> {
+pub fn get_remote_url() -> Result<String, GitError> {
     let output = Command::new("git")
         .args(["remote", "get-url", "origin"])
         .output()
@@ -42,8 +42,20 @@ pub fn repo_context_from_remote() -> Result<RepoContext, GitError> {
         return Err(GitError::NoBitbucketRemote);
     }
 
-    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Parse repo context from git remote, for Bitbucket Cloud.
+pub fn repo_context_from_remote() -> Result<RepoContext, GitError> {
+    let url = get_remote_url()?;
     parse_bitbucket_url(&url)
+}
+
+/// Parse repo context from any git remote URL (for Bitbucket Server/DC).
+/// Extracts project/repo from the URL path.
+pub fn repo_context_from_any_remote() -> Result<RepoContext, GitError> {
+    let url = get_remote_url()?;
+    parse_generic_url(&url)
 }
 
 fn parse_bitbucket_url(url: &str) -> Result<RepoContext, GitError> {
@@ -62,6 +74,59 @@ fn parse_bitbucket_url(url: &str) -> Result<RepoContext, GitError> {
     }
 
     Err(GitError::NoBitbucketRemote)
+}
+
+/// Parse any git remote URL to extract project/repo.
+/// Handles DC patterns:
+///   ssh://git@host:port/PROJECT/repo.git
+///   https://host/scm/PROJECT/repo.git
+///   git@host:PROJECT/repo.git
+fn parse_generic_url(url: &str) -> Result<RepoContext, GitError> {
+    // SSH URL: ssh://git@host:port/PROJECT/repo.git
+    if url.starts_with("ssh://") {
+        let without_scheme = &url["ssh://".len()..];
+        // Skip user@host:port, find the path
+        let path = if let Some(idx) = without_scheme.find('/') {
+            &without_scheme[idx + 1..]
+        } else {
+            return Err(GitError::Parse(url.to_string()));
+        };
+        return parse_path(path);
+    }
+
+    // HTTPS: https://host/scm/PROJECT/repo.git or https://host/PROJECT/repo.git
+    if url.starts_with("https://") || url.starts_with("http://") {
+        let without_scheme = url.split("://").nth(1).unwrap_or("");
+        // Skip host (and optional user@)
+        let path = if let Some(idx) = without_scheme.find('/') {
+            &without_scheme[idx + 1..]
+        } else {
+            return Err(GitError::Parse(url.to_string()));
+        };
+        // Strip /scm/ prefix used by DC HTTPS URLs
+        let path = path.strip_prefix("scm/").unwrap_or(path);
+        return parse_path(path);
+    }
+
+    // SCP-style: git@host:PROJECT/repo.git
+    if let Some(colon_idx) = url.find(':') {
+        if url[..colon_idx].contains('@') {
+            let path = &url[colon_idx + 1..];
+            // Skip port number if present (e.g., git@host:7999/PROJECT/repo.git)
+            let path = if path.starts_with(|c: char| c.is_ascii_digit()) {
+                if let Some(slash_idx) = path.find('/') {
+                    &path[slash_idx + 1..]
+                } else {
+                    return Err(GitError::Parse(url.to_string()));
+                }
+            } else {
+                path
+            };
+            return parse_path(path);
+        }
+    }
+
+    Err(GitError::Parse(url.to_string()))
 }
 
 fn parse_path(path: &str) -> Result<RepoContext, GitError> {
@@ -112,5 +177,45 @@ mod tests {
     #[test]
     fn test_parse_github_url_fails() {
         assert!(parse_bitbucket_url("git@github.com:user/repo.git").is_err());
+    }
+
+    // Server/DC URL tests
+    #[test]
+    fn test_parse_dc_ssh_url() {
+        let ctx =
+            parse_generic_url("ssh://git@bitbucket.company.com:7999/PROJECT/myrepo.git").unwrap();
+        assert_eq!(ctx.workspace, "PROJECT");
+        assert_eq!(ctx.repo_slug, "myrepo");
+    }
+
+    #[test]
+    fn test_parse_dc_https_scm_url() {
+        let ctx =
+            parse_generic_url("https://bitbucket.company.com/scm/PROJECT/myrepo.git").unwrap();
+        assert_eq!(ctx.workspace, "PROJECT");
+        assert_eq!(ctx.repo_slug, "myrepo");
+    }
+
+    #[test]
+    fn test_parse_dc_scp_style() {
+        let ctx = parse_generic_url("git@bitbucket.company.com:PROJECT/myrepo.git").unwrap();
+        assert_eq!(ctx.workspace, "PROJECT");
+        assert_eq!(ctx.repo_slug, "myrepo");
+    }
+
+    #[test]
+    fn test_parse_dc_scp_with_port() {
+        let ctx =
+            parse_generic_url("git@bitbucket.company.com:7999/PROJECT/myrepo.git").unwrap();
+        assert_eq!(ctx.workspace, "PROJECT");
+        assert_eq!(ctx.repo_slug, "myrepo");
+    }
+
+    #[test]
+    fn test_parse_dc_https_no_scm() {
+        let ctx =
+            parse_generic_url("https://bitbucket.company.com/PROJECT/myrepo.git").unwrap();
+        assert_eq!(ctx.workspace, "PROJECT");
+        assert_eq!(ctx.repo_slug, "myrepo");
     }
 }

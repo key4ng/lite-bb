@@ -27,7 +27,9 @@ bb auth status
 bb auth logout
 ```
 
-Env var overrides: `BB_TOKEN`, or `BB_USERNAME` + `BB_APP_PASSWORD`.
+Supports both **Bitbucket Cloud** and **Bitbucket Server / Data Center**. During `bb auth login`, select your instance type and provide the server URL for on-prem.
+
+Env var overrides: `BB_TOKEN`, or `BB_USERNAME` + `BB_APP_PASSWORD`. For on-prem: `BB_SERVER_URL`.
 
 ## Usage
 
@@ -75,7 +77,7 @@ bb pr close 42
 bb pr reopen 42
 ```
 
-All PR commands support `-R WORKSPACE/REPO` to override auto-detection from git remote.
+All PR commands support `-R WORKSPACE/REPO` (or `-R PROJECT/REPO` for on-prem) to override auto-detection from git remote.
 
 ## Commands
 

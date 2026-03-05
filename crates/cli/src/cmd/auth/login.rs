@@ -1,10 +1,30 @@
 use anyhow::Result;
-use dialoguer::{Password, Select};
+use dialoguer::{Input, Password, Select};
 
 use bb_core::config::Config;
 
 pub async fn run() -> Result<()> {
     let mut config = Config::load().unwrap_or_default();
+
+    let server_types = &["Bitbucket Cloud", "Bitbucket Server / Data Center"];
+    let server_selection = Select::new()
+        .with_prompt("Which Bitbucket instance?")
+        .items(server_types)
+        .default(0)
+        .interact()?;
+
+    match server_selection {
+        0 => {
+            config.server_url = None;
+        }
+        1 => {
+            let url: String = Input::new()
+                .with_prompt("Server URL (e.g. https://bitbucket.company.com)")
+                .interact_text()?;
+            config.server_url = Some(url.trim_end_matches('/').to_string());
+        }
+        _ => unreachable!(),
+    }
 
     let auth_types = &["Access Token", "App Password"];
     let selection = Select::new()
@@ -23,7 +43,7 @@ pub async fn run() -> Result<()> {
             config.app_password = None;
         }
         1 => {
-            let username: String = dialoguer::Input::new()
+            let username: String = Input::new()
                 .with_prompt("Username")
                 .interact_text()?;
             let app_password = Password::new()
@@ -37,6 +57,9 @@ pub async fn run() -> Result<()> {
     }
 
     config.save()?;
-    println!("✓ Logged in. Credentials saved to {}", Config::config_path().display());
+    println!(
+        "Logged in. Credentials saved to {}",
+        Config::config_path().display()
+    );
     Ok(())
 }

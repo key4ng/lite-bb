@@ -1,7 +1,31 @@
-use crate::api::client::{ApiError, Client};
+use crate::api::client::{ApiError, HttpClient};
+use crate::auth::Credentials;
+use crate::config::Provider;
 use crate::models::*;
 
-impl Client {
+const BASE_URL: &str = "https://api.bitbucket.org/2.0";
+
+pub struct CloudClient {
+    http: HttpClient,
+    base_url: String,
+}
+
+impl CloudClient {
+    pub fn new(credentials: &Credentials) -> Result<Self, reqwest::Error> {
+        let http = HttpClient::new(credentials, &Provider::Cloud)?;
+        Ok(Self {
+            http,
+            base_url: BASE_URL.to_string(),
+        })
+    }
+
+    fn repo_url(&self, workspace: &str, repo: &str, path: &str) -> String {
+        format!(
+            "{}/repositories/{}/{}{}",
+            self.base_url, workspace, repo, path
+        )
+    }
+
     pub async fn list_prs(
         &self,
         workspace: &str,
@@ -24,7 +48,7 @@ impl Client {
         if !params.is_empty() {
             url = format!("{}?{}", url, params.join("&"));
         }
-        self.get(&url).await
+        self.http.get(&url).await
     }
 
     pub async fn get_pr(
@@ -34,7 +58,7 @@ impl Client {
         id: u64,
     ) -> Result<PullRequest, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}"));
-        self.get(&url).await
+        self.http.get(&url).await
     }
 
     pub async fn create_pr(
@@ -44,7 +68,7 @@ impl Client {
         body: &CreatePullRequest,
     ) -> Result<PullRequest, ApiError> {
         let url = self.repo_url(workspace, repo, "/pullrequests");
-        self.post(&url, body).await
+        self.http.post(&url, body).await
     }
 
     pub async fn update_pr(
@@ -55,7 +79,7 @@ impl Client {
         body: &UpdatePullRequest,
     ) -> Result<PullRequest, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}"));
-        self.put(&url, body).await
+        self.http.put(&url, body).await
     }
 
     pub async fn merge_pr(
@@ -66,7 +90,7 @@ impl Client {
         body: &MergeRequest,
     ) -> Result<PullRequest, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/merge"));
-        self.post(&url, body).await
+        self.http.post(&url, body).await
     }
 
     pub async fn decline_pr(
@@ -76,7 +100,7 @@ impl Client {
         id: u64,
     ) -> Result<PullRequest, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/decline"));
-        self.post(&url, &serde_json::json!({})).await
+        self.http.post(&url, &serde_json::json!({})).await
     }
 
     pub async fn approve_pr(
@@ -86,7 +110,7 @@ impl Client {
         id: u64,
     ) -> Result<(), ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/approve"));
-        self.post_empty(&url).await
+        self.http.post_empty(&url).await
     }
 
     pub async fn unapprove_pr(
@@ -96,7 +120,7 @@ impl Client {
         id: u64,
     ) -> Result<(), ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/approve"));
-        self.delete(&url).await
+        self.http.delete(&url).await
     }
 
     pub async fn get_diff(
@@ -106,7 +130,7 @@ impl Client {
         id: u64,
     ) -> Result<String, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/diff"));
-        self.get_text(&url).await
+        self.http.get_text(&url).await
     }
 
     pub async fn list_comments(
@@ -116,7 +140,7 @@ impl Client {
         id: u64,
     ) -> Result<Paginated<Comment>, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/comments"));
-        self.get(&url).await
+        self.http.get(&url).await
     }
 
     pub async fn add_comment(
@@ -127,7 +151,7 @@ impl Client {
         body: &CreateComment,
     ) -> Result<Comment, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/comments"));
-        self.post(&url, body).await
+        self.http.post(&url, body).await
     }
 
     pub async fn get_statuses(
@@ -137,6 +161,6 @@ impl Client {
         id: u64,
     ) -> Result<Paginated<BuildStatus>, ApiError> {
         let url = self.repo_url(workspace, repo, &format!("/pullrequests/{id}/statuses"));
-        self.get(&url).await
+        self.http.get(&url).await
     }
 }

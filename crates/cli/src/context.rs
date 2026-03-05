@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 
-use bb_core::api::client::Client;
-use bb_core::config::Config;
+use bb_core::api::ApiClient;
+use bb_core::config::{Config, Provider};
 use bb_core::git::{self, RepoContext};
 
 pub struct CmdContext {
-    pub client: Client,
+    pub client: ApiClient,
     pub repo: RepoContext,
 }
 
@@ -13,8 +13,9 @@ impl CmdContext {
     pub fn new(repo_override: Option<&str>) -> Result<Self> {
         let config = Config::load().context("failed to load config")?;
         let credentials = config.credentials()?;
+        let provider = config.provider();
         let client =
-            Client::new(&credentials).context("failed to create API client")?;
+            ApiClient::new(&credentials, &provider).context("failed to create API client")?;
 
         let repo = if let Some(r) = repo_override {
             parse_repo_flag(r)?
@@ -26,8 +27,12 @@ impl CmdContext {
                     repo_slug: slug.clone(),
                 }
             } else {
-                git::repo_context_from_remote()
-                    .context("could not detect repo — use --repo WORKSPACE/REPO or set defaults in config")?
+                match &provider {
+                    Provider::Cloud => git::repo_context_from_remote()
+                        .context("could not detect repo — use --repo WORKSPACE/REPO or set defaults in config")?,
+                    Provider::Server { .. } => git::repo_context_from_any_remote()
+                        .context("could not detect repo — use --repo PROJECT/REPO or set defaults in config")?,
+                }
             }
         };
 
