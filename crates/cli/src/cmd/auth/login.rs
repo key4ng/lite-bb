@@ -18,9 +18,16 @@ pub async fn run() -> Result<()> {
             config.server_url = None;
         }
         1 => {
-            let url: String = Input::new()
-                .with_prompt("Server URL (e.g. https://bitbucket.company.com)")
-                .interact_text()?;
+            let url: String = if let Some(default_url) = bb_core::git::server_url_from_remote() {
+                Input::new()
+                    .with_prompt("Server URL")
+                    .default(default_url)
+                    .interact_text()?
+            } else {
+                Input::new()
+                    .with_prompt("Server URL (e.g. https://bitbucket.company.com)")
+                    .interact_text()?
+            };
             config.server_url = Some(url.trim_end_matches('/').to_string());
         }
         _ => unreachable!(),

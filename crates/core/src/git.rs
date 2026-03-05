@@ -45,6 +45,54 @@ pub fn get_remote_url() -> Result<String, GitError> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+/// Extract the server base URL from a git remote URL.
+/// e.g. "ssh://git@bitbucket.company.com:7999/PROJECT/repo.git" → "https://bitbucket.company.com"
+/// e.g. "https://bitbucket.company.com/scm/PROJECT/repo.git" → "https://bitbucket.company.com"
+pub fn server_url_from_remote() -> Option<String> {
+    let url = get_remote_url().ok()?;
+    extract_server_url(&url)
+}
+
+fn extract_server_url(url: &str) -> Option<String> {
+    // HTTPS: https://host/... or https://user@host/...
+    if url.starts_with("https://") || url.starts_with("http://") {
+        let scheme_end = url.find("://").unwrap() + 3;
+        let rest = &url[scheme_end..];
+        // Strip user@ if present
+        let rest = if let Some(at_idx) = rest.find('@') {
+            if rest[..at_idx].contains('/') {
+                rest // no user@ — the @ is in the path
+            } else {
+                &rest[at_idx + 1..]
+            }
+        } else {
+            rest
+        };
+        // Take just the host (before first /)
+        let host = rest.split('/').next()?;
+        let scheme = &url[..url.find("://").unwrap()];
+        return Some(format!("{scheme}://{host}"));
+    }
+
+    // SSH: ssh://git@host:port/... → https://host
+    if url.starts_with("ssh://") {
+        let rest = &url["ssh://".len()..];
+        let rest = rest.split('@').last()?;
+        // host:port or host
+        let host = rest.split(':').next()?.split('/').next()?;
+        return Some(format!("https://{host}"));
+    }
+
+    // SCP: git@host:path or git@host:port/path → https://host
+    if let Some(at_idx) = url.find('@') {
+        let after_at = &url[at_idx + 1..];
+        let host = after_at.split(':').next()?.split('/').next()?;
+        return Some(format!("https://{host}"));
+    }
+
+    None
+}
+
 /// Parse repo context from git remote, for Bitbucket Cloud.
 pub fn repo_context_from_remote() -> Result<RepoContext, GitError> {
     let url = get_remote_url()?;
@@ -209,6 +257,39 @@ mod tests {
             parse_generic_url("git@bitbucket.company.com:7999/PROJECT/myrepo.git").unwrap();
         assert_eq!(ctx.workspace, "PROJECT");
         assert_eq!(ctx.repo_slug, "myrepo");
+    }
+
+    // Server URL extraction tests
+    #[test]
+    fn test_extract_server_url_https() {
+        assert_eq!(
+            extract_server_url("https://bitbucket.company.com/scm/PROJECT/repo.git"),
+            Some("https://bitbucket.company.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_server_url_https_with_user() {
+        assert_eq!(
+            extract_server_url("https://user@bitbucket.company.com/scm/PROJECT/repo.git"),
+            Some("https://bitbucket.company.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_server_url_ssh() {
+        assert_eq!(
+            extract_server_url("ssh://git@bitbucket.company.com:7999/PROJECT/repo.git"),
+            Some("https://bitbucket.company.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_server_url_scp() {
+        assert_eq!(
+            extract_server_url("git@bitbucket.company.com:PROJECT/repo.git"),
+            Some("https://bitbucket.company.com".to_string())
+        );
     }
 
     #[test]
