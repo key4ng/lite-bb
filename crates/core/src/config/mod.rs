@@ -16,6 +16,12 @@ pub enum ConfigError {
     NoCredentials,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Provider {
+    Cloud,
+    Server { base_url: String },
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     pub token: Option<String>,
@@ -23,6 +29,7 @@ pub struct Config {
     pub app_password: Option<String>,
     pub workspace: Option<String>,
     pub default_repo: Option<String>,
+    pub server_url: Option<String>,
 }
 
 impl Config {
@@ -81,5 +88,21 @@ impl Config {
         }
 
         Err(ConfigError::NoCredentials)
+    }
+
+    pub fn provider(&self) -> Provider {
+        // Env var takes priority
+        if let Ok(url) = std::env::var("BB_SERVER_URL") {
+            return Provider::Server {
+                base_url: url.trim_end_matches('/').to_string(),
+            };
+        }
+        // Fall back to config
+        if let Some(url) = &self.server_url {
+            return Provider::Server {
+                base_url: url.trim_end_matches('/').to_string(),
+            };
+        }
+        Provider::Cloud
     }
 }

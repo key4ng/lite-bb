@@ -2,8 +2,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use thiserror::Error;
 
 use crate::auth::Credentials;
-
-const BASE_URL: &str = "https://api.bitbucket.org/2.0";
+use crate::config::Provider;
 
 #[derive(Debug, Error)]
 pub enum ApiError {
@@ -13,15 +12,14 @@ pub enum ApiError {
     Api { status: u16, message: String },
 }
 
-pub struct Client {
-    http: reqwest::Client,
-    base_url: String,
+pub struct HttpClient {
+    pub(crate) http: reqwest::Client,
 }
 
-impl Client {
-    pub fn new(credentials: &Credentials) -> Result<Self, reqwest::Error> {
+impl HttpClient {
+    pub fn new(credentials: &Credentials, provider: &Provider) -> Result<Self, reqwest::Error> {
         let mut headers = HeaderMap::new();
-        let auth_value = credentials.basic_auth_header();
+        let auth_value = credentials.auth_header(provider);
         headers.insert(
             AUTHORIZATION,
             HeaderValue::from_str(&auth_value).expect("invalid auth header"),
@@ -31,21 +29,7 @@ impl Client {
             .default_headers(headers)
             .build()?;
 
-        Ok(Self {
-            http,
-            base_url: BASE_URL.to_string(),
-        })
-    }
-
-    pub fn url(&self, path: &str) -> String {
-        format!("{}{}", self.base_url, path)
-    }
-
-    pub fn repo_url(&self, workspace: &str, repo: &str, path: &str) -> String {
-        format!(
-            "{}/repositories/{}/{}{}",
-            self.base_url, workspace, repo, path
-        )
+        Ok(Self { http })
     }
 
     pub async fn get<T: serde::de::DeserializeOwned>(&self, url: &str) -> Result<T, ApiError> {
