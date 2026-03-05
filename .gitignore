@@ -1,2 +1,14 @@
 CLAUDE.md
 .claude/
+
+# Rust
+/target/
+Cargo.lock
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+.venv/

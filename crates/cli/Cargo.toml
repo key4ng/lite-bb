@@ -1,0 +1,14 @@
+[package]
+name = "bb-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "bb"
+path = "src/main.rs"
+
+[dependencies]
+bb-core = { path = "../core" }
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
