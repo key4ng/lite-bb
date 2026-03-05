@@ -12,4 +12,5 @@ bb-core = { path = "../core" }
 anyhow.workspace = true
 clap.workspace = true
 dialoguer.workspace = true
+serde_json.workspace = true
 tokio.workspace = true

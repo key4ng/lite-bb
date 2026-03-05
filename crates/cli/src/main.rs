@@ -1,4 +1,5 @@
 mod cmd;
+mod context;
 
 use clap::Parser;
 
