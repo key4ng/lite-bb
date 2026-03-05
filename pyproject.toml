@@ -15,7 +15,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",
-    "Programming Language :: Python :: Implementation :: CPython",
 ]
 
 [project.urls]
@@ -23,5 +22,5 @@ Homepage = "https://github.com/key4ng/lite-bb"
 Repository = "https://github.com/key4ng/lite-bb"
 
 [tool.maturin]
-manifest-path = "crates/python/Cargo.toml"
-module-name = "bb"
+manifest-path = "crates/cli/Cargo.toml"
+bindings = "bin"
