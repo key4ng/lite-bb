@@ -19,6 +19,12 @@ impl CloudClient {
         })
     }
 
+    pub async fn verify(&self) -> Result<String, ApiError> {
+        let url = format!("{}/user", self.base_url);
+        let user: User = self.http.get(&url).await?;
+        Ok(user.display_name)
+    }
+
     fn repo_url(&self, workspace: &str, repo: &str, path: &str) -> String {
         format!(
             "{}/repositories/{}/{}{}",

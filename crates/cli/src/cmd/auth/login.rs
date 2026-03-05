@@ -1,6 +1,7 @@
 use anyhow::Result;
 use dialoguer::{Input, Password, Select};
 
+use bb_core::api::ApiClient;
 use bb_core::config::Config;
 
 pub async fn run() -> Result<()> {
@@ -63,10 +64,26 @@ pub async fn run() -> Result<()> {
         _ => unreachable!(),
     }
 
-    config.save()?;
-    println!(
-        "Logged in. Credentials saved to {}",
-        Config::config_path().display()
-    );
+    // Verify credentials before saving
+    let provider = config.provider();
+    let credentials = config.credentials()?;
+    let client = ApiClient::new(&credentials, &provider)?;
+
+    print!("Verifying credentials... ");
+    match client.verify().await {
+        Ok(info) => {
+            println!("OK ({info})");
+            config.save()?;
+            println!(
+                "Credentials saved to {}",
+                Config::config_path().display()
+            );
+        }
+        Err(e) => {
+            println!("FAILED");
+            anyhow::bail!("authentication failed: {e}");
+        }
+    }
+
     Ok(())
 }

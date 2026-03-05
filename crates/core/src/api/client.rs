@@ -32,6 +32,11 @@ impl HttpClient {
         Ok(Self { http })
     }
 
+    pub async fn check_status(&self, url: &str) -> Result<u16, ApiError> {
+        let resp = self.http.get(url).send().await?;
+        Ok(resp.status().as_u16())
+    }
+
     pub async fn get<T: serde::de::DeserializeOwned>(&self, url: &str) -> Result<T, ApiError> {
         let resp = self.http.get(url).send().await?;
         Self::handle_response(resp).await
