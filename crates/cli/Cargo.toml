@@ -11,4 +11,5 @@ path = "src/main.rs"
 bb-core = { path = "../core" }
 anyhow.workspace = true
 clap.workspace = true
+dialoguer.workspace = true
 tokio.workspace = true
