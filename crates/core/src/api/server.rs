@@ -21,6 +21,20 @@ impl ServerClient {
         })
     }
 
+    pub async fn verify(&self) -> Result<String, ApiError> {
+        // DC: GET /rest/api/1.0/application-properties returns server info
+        // If auth fails, we get 401. If it succeeds, we know credentials work.
+        let url = format!("{}/application-properties", self.base_url);
+        let status = self.http.check_status(&url).await?;
+        if status == 401 || status == 403 {
+            return Err(ApiError::Api {
+                status,
+                message: "authentication failed".to_string(),
+            });
+        }
+        Ok("authenticated".to_string())
+    }
+
     fn pr_url(&self, project: &str, repo: &str, path: &str) -> String {
         format!(
             "{}/projects/{}/repos/{}/pull-requests{}",

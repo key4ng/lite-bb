@@ -1,6 +1,7 @@
 use anyhow::Result;
 use dialoguer::{Input, Password, Select};
 
+use bb_core::api::ApiClient;
 use bb_core::config::Config;
 
 pub async fn run() -> Result<()> {
@@ -18,9 +19,16 @@ pub async fn run() -> Result<()> {
             config.server_url = None;
         }
         1 => {
-            let url: String = Input::new()
-                .with_prompt("Server URL (e.g. https://bitbucket.company.com)")
-                .interact_text()?;
+            let url: String = if let Some(default_url) = bb_core::git::server_url_from_remote() {
+                Input::new()
+                    .with_prompt("Server URL")
+                    .default(default_url)
+                    .interact_text()?
+            } else {
+                Input::new()
+                    .with_prompt("Server URL (e.g. https://bitbucket.company.com)")
+                    .interact_text()?
+            };
             config.server_url = Some(url.trim_end_matches('/').to_string());
         }
         _ => unreachable!(),
@@ -56,10 +64,26 @@ pub async fn run() -> Result<()> {
         _ => unreachable!(),
     }
 
-    config.save()?;
-    println!(
-        "Logged in. Credentials saved to {}",
-        Config::config_path().display()
-    );
+    // Verify credentials before saving
+    let provider = config.provider();
+    let credentials = config.credentials()?;
+    let client = ApiClient::new(&credentials, &provider)?;
+
+    print!("Verifying credentials... ");
+    match client.verify().await {
+        Ok(info) => {
+            println!("OK ({info})");
+            config.save()?;
+            println!(
+                "Credentials saved to {}",
+                Config::config_path().display()
+            );
+        }
+        Err(e) => {
+            println!("FAILED");
+            anyhow::bail!("authentication failed: {e}");
+        }
+    }
+
     Ok(())
 }

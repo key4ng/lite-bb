@@ -25,6 +25,13 @@ impl ApiClient {
         }
     }
 
+    pub async fn verify(&self) -> Result<String, ApiError> {
+        match self {
+            Self::Cloud(c) => c.verify().await,
+            Self::Server(s) => s.verify().await,
+        }
+    }
+
     pub async fn list_prs(
         &self,
         workspace: &str,
