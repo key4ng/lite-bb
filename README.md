@@ -4,18 +4,14 @@ Because sometimes you want `gh`, but your company uses Bitbucket. `lite-bb` is a
 
 ## Install
 
-### CLI (Rust)
-
 ```bash
-cargo install --path crates/cli
-```
-
-### Python
-
-```bash
-uv pip install .
+# Via pip/uv (recommended — pre-built binary, no Rust toolchain needed)
+pip install lite-bb
 # or
-pip install .
+uv pip install lite-bb
+
+# From source
+cargo install --path crates/cli
 ```
 
 ## Auth
@@ -81,26 +77,6 @@ bb pr reopen 42
 
 All PR commands support `-R WORKSPACE/REPO` to override auto-detection from git remote.
 
-### Python
-
-```python
-import bb
-
-bb.auth_login(token="my-access-token")
-# or: bb.auth_login(username="user", app_password="pass")
-
-prs = bb.pr_list("workspace", "repo", state="OPEN", limit=10)
-pr = bb.pr_get("workspace", "repo", 42)
-diff = bb.pr_diff("workspace", "repo", 42)
-comments = bb.pr_comments("workspace", "repo", 42)
-
-bb.pr_create("workspace", "repo", "feat: title", "my-branch",
-             destination_branch="main", description="PR body")
-bb.pr_comment("workspace", "repo", 42, "LGTM!")
-bb.pr_approve("workspace", "repo", 42)
-bb.pr_merge("workspace", "repo", 42, strategy="squash")
-```
-
 ## Commands
 
 | Command | Description |
@@ -128,9 +104,6 @@ cargo build            # Build CLI
 cargo test             # Run tests
 cargo run -- pr list   # Run CLI directly
 
-# Python bindings
-maturin develop -m crates/python/Cargo.toml
-python -c "import bb; print(bb.version())"
 ```
 
 ## License
