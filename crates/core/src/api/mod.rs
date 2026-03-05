@@ -8,6 +8,7 @@ use server::ServerClient;
 
 use crate::auth::Credentials;
 use crate::config::Provider;
+use crate::models::search::CodeResult;
 use crate::models::*;
 
 pub enum ApiClient {
@@ -178,6 +179,26 @@ impl ApiClient {
         match self {
             Self::Cloud(c) => c.get_statuses(workspace, repo, id).await,
             Self::Server(s) => s.get_statuses(workspace, repo, id).await,
+        }
+    }
+
+    pub async fn search_code(
+        &self,
+        workspace: &str,
+        repo: Option<&str>,
+        query: &str,
+        limit: u32,
+        extension: Option<&str>,
+        filename: Option<&str>,
+    ) -> Result<Vec<CodeResult>, ApiError> {
+        match self {
+            Self::Cloud(c) => {
+                c.search_code(workspace, repo, query, limit, extension, filename)
+                    .await
+            }
+            Self::Server(s) => {
+                s.search_code(repo, query, limit, extension, filename).await
+            }
         }
     }
 }
