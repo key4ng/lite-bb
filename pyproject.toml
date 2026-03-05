@@ -5,8 +5,22 @@ build-backend = "maturin"
 [project]
 name = "lite-bb"
 version = "0.1.0"
-description = "A gh-style CLI for Bitbucket"
+description = "A gh-style CLI for Bitbucket — PR management for humans, scripts, and LLM agents"
 requires-python = ">=3.9"
+license = "MIT"
+readme = "README.md"
+keywords = ["bitbucket", "cli", "pull-request", "git"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+Homepage = "https://github.com/key4ng/lite-bb"
+Repository = "https://github.com/key4ng/lite-bb"
 
 [tool.maturin]
 manifest-path = "crates/python/Cargo.toml"
