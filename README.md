@@ -11,7 +11,8 @@ Built for developers who live in the terminal, CI/CD pipelines that need scripta
 - **Familiar interface** — if you know `gh pr`, you already know `bb pr`. Same commands, same flags, same muscle memory.
 - **Cloud + on-prem** — works with both Bitbucket Cloud and Bitbucket Server / Data Center. Auto-detects your instance type from the git remote.
 - **Zero-config start** — auto-detects workspace, repo, and branch from your git context. Just `cd` into your repo and go.
-- **Machine-readable output** — every view command supports `--json` for scripting, piping, and LLM agent consumption.
+- **Code search** — `bb search code` searches across your workspace or a specific repo, with filters for extension and filename.
+- **Machine-readable output** — every command supports `--json` for scripting, piping, and LLM agent consumption.
 - **Credential verification** — `bb auth login` validates your token against the API before saving, so you catch auth issues immediately.
 - **Easy install** — distributed as a pre-built binary via PyPI. No Rust toolchain needed — just `pip install lite-bb`.
 
@@ -189,6 +190,31 @@ bb pr checks 42
 bb pr checks 42 --json
 ```
 
+### Searching Code
+
+```bash
+# Search across your whole workspace (Cloud) or server (Server/DC)
+bb search code "fn main"
+
+# Scope to a specific repo
+bb search code "TODO" --repo myworkspace/myrepo
+
+# Scope to a personal repo (Server/DC)
+bb search code "TODO" --repo ~username/myrepo
+
+# Filter by file extension or filename
+bb search code "import requests" --extension py
+bb search code "Makefile" --filename Makefile
+
+# Limit results (default: 30)
+bb search code "error handling" --limit 10
+
+# JSON output for scripts and agents
+bb search code "apiKey" --json
+```
+
+Results show the file path, repository, and matching lines. Lines that directly match the query are highlighted with a `>` prefix.
+
 ### Branch Operations
 
 ```bash
@@ -221,6 +247,7 @@ bb pr reopen 42
 | `bb pr diff <id>` | View the pull request diff |
 | `bb pr checks <id>` | View CI/CD status checks |
 | `bb pr checkout <id>` | Fetch and checkout the PR branch locally |
+| `bb search code <query>` | Search code across workspace or a specific repo |
 
 ## Bitbucket Server / Data Center
 
