@@ -1,5 +1,17 @@
 use serde::{Deserialize, Serialize};
 
+fn decode_html_entities(s: &str) -> String {
+    s.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#x27;", "'")
+        .replace("&#x2F;", "/")
+        .replace("&apos;", "'")
+        .replace("<em>", "")
+        .replace("</em>", "")
+}
+
 /// Canonical code search result, normalized from both Cloud and Server responses.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CodeResult {
@@ -89,43 +101,24 @@ pub struct ServerCodePage {
     pub values: Vec<ServerCodeResult>,
     pub is_last_page: bool,
     pub start: u32,
-    pub next_page_start: Option<u32>,
+    pub next_start: Option<u32>,
 }
 
+/// A single search hit from Bitbucket Server/DC.
+/// `hit_contexts` is a Vec of context windows; each window is a Vec of lines.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerCodeResult {
-    pub path_matches: Option<Vec<ServerHitContext>>,
-    pub hit_contexts: Vec<ServerHitContext>,
-    pub file: ServerFile,
+    pub hit_contexts: Vec<Vec<ServerContextLine>>,
+    /// Plain path string, e.g. "src/main.rs"
+    pub file: String,
     pub repository: Option<ServerRepository>,
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerHitContext {
-    pub context: Vec<ServerContextLine>,
-    pub lines: Option<Vec<ServerContextLine>>,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct ServerContextLine {
+    pub line: u32,
     pub text: String,
-    #[serde(rename = "truncated", default)]
-    pub truncated: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ServerFile {
-    pub path: ServerPath,
-    pub node: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerPath {
-    #[serde(rename = "toString")]
-    pub to_string: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -143,32 +136,27 @@ impl ServerCodeResult {
     pub fn into_code_result(self) -> CodeResult {
         let repo = match &self.repository {
             Some(r) => {
-                let project_key = r
-                    .project
-                    .as_ref()
-                    .map(|p| p.key.as_str())
-                    .unwrap_or("~");
+                let project_key = r.project.as_ref().map(|p| p.key.as_str()).unwrap_or("~");
                 format!("{}/{}", project_key, r.slug)
             }
             None => "unknown".to_string(),
         };
 
         let mut matches = Vec::new();
-        for (i, ctx) in self.hit_contexts.iter().enumerate() {
-            let lines = ctx.context.iter().enumerate();
-            for (j, line) in lines {
-                // The middle line(s) in a context window are the matches
-                let is_hit = j == self.hit_contexts.len().min(ctx.context.len() / 2);
+        for window in &self.hit_contexts {
+            let mid = window.len() / 2;
+            for (j, line) in window.iter().enumerate() {
                 matches.push(MatchLine {
-                    line: (i * ctx.context.len() + j + 1) as u32,
-                    content: line.text.clone(),
-                    highlighted: is_hit,
+                    line: line.line,
+                    content: decode_html_entities(&line.text),
+                    // Middle line of each context window is the actual match
+                    highlighted: j == mid,
                 });
             }
         }
 
         CodeResult {
-            path: self.file.path.to_string,
+            path: self.file.clone(),
             repo,
             matches,
         }
@@ -181,8 +169,6 @@ impl ServerCodeResult {
 pub struct ServerSearchRequest {
     pub query: String,
     pub entities: ServerSearchEntities,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scopes: Option<Vec<ServerSearchScope>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -194,11 +180,4 @@ pub struct ServerSearchEntities {
 pub struct ServerCodeEntity {
     pub start: u32,
     pub limit: u32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ServerSearchScope {
-    #[serde(rename = "type")]
-    pub scope_type: String,
-    pub key: String,
 }

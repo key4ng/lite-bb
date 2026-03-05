@@ -3,7 +3,6 @@ use crate::auth::Credentials;
 use crate::config::Provider;
 use crate::models::search::{
     CodeResult, ServerCodeEntity, ServerSearchEntities, ServerSearchRequest, ServerSearchResponse,
-    ServerSearchScope,
 };
 use crate::models::server::*;
 use crate::models::*;
@@ -276,7 +275,8 @@ impl ServerClient {
 
     /// Search code on Bitbucket Server/DC.
     /// POST /rest/search/latest/search
-    /// Scope to a repo with `repo = Some("~username/repo-slug")` or `Some("PROJECT/repo-slug")`.
+    /// When `repo` is given (e.g. "~username/repo-slug" or "PROJECT/repo-slug"), results are
+    /// filtered client-side by slug — the server search API does not support body-level scoping.
     pub async fn search_code(
         &self,
         repo: Option<&str>,
@@ -293,28 +293,24 @@ impl ServerClient {
             full_query.push_str(&format!(" file:{fname}"));
         }
 
-        // Build scope: repo slug is the key; project key is derived from workspace prefix
-        let scopes = repo.map(|r| {
-            let repo_slug = r.split('/').last().unwrap_or(r);
-            vec![ServerSearchScope {
-                scope_type: "REPOSITORY".to_string(),
-                key: repo_slug.to_string(),
-            }]
-        });
+        // Derive the repo slug for client-side filtering (SERVER search API has no body scoping)
+        let filter_slug = repo.map(|r| r.split('/').last().unwrap_or(r).to_lowercase());
 
         let search_base = self.base_url.trim_end_matches("/rest/api/1.0");
         let url = format!("{}/rest/search/latest/search", search_base);
 
+        // When scoping to a repo, fetch more results to account for cross-repo noise
+        let fetch_limit = if filter_slug.is_some() { limit * 10 } else { limit };
+
         let body = ServerSearchRequest {
             query: full_query,
             entities: ServerSearchEntities {
-                code: ServerCodeEntity { start: 0, limit },
+                code: ServerCodeEntity { start: 0, limit: fetch_limit },
             },
-            scopes,
         };
 
         let resp: ServerSearchResponse = self.http.post(&url, &body).await?;
-        let results = resp
+        let mut results: Vec<CodeResult> = resp
             .code
             .map(|page| {
                 page.values
@@ -323,6 +319,19 @@ impl ServerClient {
                     .collect()
             })
             .unwrap_or_default();
+
+        // Filter by repo slug and trim to requested limit
+        if let Some(slug) = &filter_slug {
+            results.retain(|r| {
+                r.repo
+                    .split('/')
+                    .last()
+                    .map(|s| s.to_lowercase() == *slug)
+                    .unwrap_or(false)
+            });
+            results.truncate(limit as usize);
+        }
+
         Ok(results)
     }
 }
