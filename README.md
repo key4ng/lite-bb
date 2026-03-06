@@ -12,6 +12,7 @@ Built for developers who live in the terminal, CI/CD pipelines that need scripta
 - **Cloud + on-prem** — works with both Bitbucket Cloud and Bitbucket Server / Data Center. Auto-detects your instance type from the git remote.
 - **Zero-config start** — auto-detects workspace, repo, and branch from your git context. Just `cd` into your repo and go.
 - **Repository management** — `bb repo list/view/clone/create` manages repos the same way `gh repo` does.
+- **API passthrough** — `bb api <endpoint>` makes authenticated API calls like `gh api`, with `--jq`, `--field`, and `--method` support.
 - **Code search** — `bb search code` searches across your workspace or a specific repo, with filters for extension and filename.
 - **Machine-readable output** — every command supports `--json` for scripting, piping, and LLM agent consumption.
 - **Credential verification** — `bb auth login` validates your token against the API before saving, so you catch auth issues immediately.
@@ -263,6 +264,47 @@ bb pr close 42
 bb pr reopen 42
 ```
 
+### API Passthrough
+
+Make raw authenticated requests to the Bitbucket API — the equivalent of `gh api`.
+
+```bash
+# GET a resource (pretty-printed JSON by default)
+bb api repositories/myworkspace/myrepo
+
+# Read a file from a repo
+bb api projects/GENAICORE/repos/ome/raw/config/runtimes/srt/deepseek-r1-rdma-rt.yaml
+
+# Filter JSON output with jq
+bb api projects/GENAICORE/repos/ome -q '.slug'
+bb api repositories/myworkspace/myrepo/pullrequests -q '[.values[].title]'
+
+# POST with a JSON body built from fields
+bb api repositories/myworkspace/myrepo/pullrequests -X POST \
+  -F title="My PR" -F description="Fixes the bug"
+
+# POST with a raw JSON body
+bb api rest/search/latest/search -X POST \
+  --input '{"query":"deepseek","entities":{"code":{"start":0,"limit":3}}}' \
+  -q '.code.values[].file'
+
+# Add custom headers
+bb api some/endpoint -H 'X-Custom: value'
+```
+
+**Base URLs used:**
+- Cloud: `https://api.bitbucket.org/2.0`
+- Server/DC: your server root (so `/rest/api/1.0/`, `/rest/search/latest/`, etc. are all reachable)
+
+| Flag | Description |
+|------|-------------|
+| `-X`/`--method` | HTTP method (default: `GET`) |
+| `-F key=value` | Add a JSON body field; auto-typed. Repeat for multiple. |
+| `--input JSON` | Raw JSON body string (overrides `-F`) |
+| `-H 'Key: Value'` | Add a request header. Repeat for multiple. |
+| `-q filter` | Pipe response through `jq` (requires `jq` in PATH) |
+| `--raw` | Print response as-is without JSON formatting |
+
 ## Command Reference
 
 | Command | Description |
@@ -287,6 +329,7 @@ bb pr reopen 42
 | `bb pr checks <id>` | View CI/CD status checks |
 | `bb pr checkout <id>` | Fetch and checkout the PR branch locally |
 | `bb search code <query>` | Search code across workspace or a specific repo |
+| `bb api <endpoint>` | Make an authenticated API request |
 
 ## Bitbucket Server / Data Center
 
