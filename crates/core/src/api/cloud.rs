@@ -2,6 +2,7 @@ use crate::api::client::{ApiError, HttpClient};
 use crate::auth::Credentials;
 use crate::config::Provider;
 use crate::models::search::{CloudSearchResponse, CodeResult};
+use crate::models::repo::{CloudRepo, CreateRepoCloud, RepoInfo};
 use crate::models::*;
 
 const BASE_URL: &str = "https://api.bitbucket.org/2.0";
@@ -212,5 +213,56 @@ impl CloudClient {
             .into_iter()
             .map(|r| r.into_code_result(repo_label.clone()))
             .collect())
+    }
+
+    // --- Repo methods ---
+
+    pub async fn list_repos(
+        &self,
+        workspace: &str,
+        limit: u32,
+        visibility: Option<&str>,
+    ) -> Result<Vec<RepoInfo>, ApiError> {
+        let url = format!(
+            "{}/repositories/{}?pagelen={}",
+            self.base_url, workspace, limit
+        );
+        if let Some(v) = visibility {
+            // Cloud uses role param + is_private filter; simplest approach: filter after
+            let _ = v; // handled client-side below
+        }
+        let resp: Paginated<CloudRepo> = self.http.get(&url).await?;
+        let mut repos: Vec<RepoInfo> = resp.values.into_iter().map(|r| r.into_repo_info()).collect();
+        if let Some(v) = visibility {
+            match v {
+                "public" => repos.retain(|r| !r.is_private),
+                "private" => repos.retain(|r| r.is_private),
+                _ => {}
+            }
+        }
+        Ok(repos)
+    }
+
+    pub async fn get_repo(&self, workspace: &str, repo: &str) -> Result<RepoInfo, ApiError> {
+        let url = self.repo_url(workspace, repo, "");
+        let r: CloudRepo = self.http.get(&url).await?;
+        Ok(r.into_repo_info())
+    }
+
+    pub async fn create_repo(
+        &self,
+        workspace: &str,
+        slug: &str,
+        description: Option<String>,
+        is_private: bool,
+    ) -> Result<RepoInfo, ApiError> {
+        let url = self.repo_url(workspace, slug, "");
+        let body = CreateRepoCloud {
+            scm: "git".to_string(),
+            is_private,
+            description,
+        };
+        let r: CloudRepo = self.http.post(&url, &body).await?;
+        Ok(r.into_repo_info())
     }
 }
