@@ -1,5 +1,6 @@
 pub mod clone;
 pub mod create;
+pub mod file;
 pub mod list;
 pub mod view;
 
@@ -42,6 +43,17 @@ pub enum RepoCommands {
         #[arg(last = true)]
         git_args: Vec<String>,
     },
+    /// Print raw file content from a repository
+    File {
+        /// Repository in WORKSPACE/REPO or PROJECT/REPO format. Defaults to current repo.
+        #[arg(short = 'R', long, value_name = "REPO")]
+        repo: Option<String>,
+        /// Path to the file within the repository
+        path: String,
+        /// Branch, tag, or commit to read from (default: HEAD/default branch)
+        #[arg(long, value_name = "REF")]
+        ref_: Option<String>,
+    },
     /// Create a new repository
     Create {
         /// Repository name (slug)
@@ -74,6 +86,7 @@ pub async fn run(command: RepoCommands) -> anyhow::Result<()> {
             list::run(owner, limit, visibility, json).await
         }
         RepoCommands::View { repo, web, json } => view::run(repo, web, json).await,
+        RepoCommands::File { repo, path, ref_ } => file::run(repo, path, ref_).await,
         RepoCommands::Clone { repo, directory, git_args } => {
             clone::run(repo, directory, git_args).await
         }

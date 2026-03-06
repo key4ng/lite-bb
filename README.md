@@ -11,7 +11,7 @@ Built for developers who live in the terminal, CI/CD pipelines that need scripta
 - **Familiar interface** — if you know `gh pr`, you already know `bb pr`. Same commands, same flags, same muscle memory.
 - **Cloud + on-prem** — works with both Bitbucket Cloud and Bitbucket Server / Data Center. Auto-detects your instance type from the git remote.
 - **Zero-config start** — auto-detects workspace, repo, and branch from your git context. Just `cd` into your repo and go.
-- **Repository management** — `bb repo list/view/clone/create` manages repos the same way `gh repo` does.
+- **Repository management** — `bb repo list/view/clone/create/file` manages repos and reads files the same way `gh repo` does.
 - **Code search** — `bb search code` searches across your workspace or a specific repo, with filters for extension and filename.
 - **Machine-readable output** — every command supports `--json` for scripting, piping, and LLM agent consumption.
 - **Credential verification** — `bb auth login` validates your token against the API before saving, so you catch auth issues immediately.
@@ -136,6 +136,16 @@ bb repo create --name my-new-repo --description "My project"
 
 # Create a public repo and clone it immediately
 bb repo create --name my-new-repo --public --clone
+
+# Read a file from a repo (like gh api repos/.../contents/...)
+bb repo file WORKSPACE/REPO path/to/file.yaml
+
+# Read from a specific branch or commit
+bb repo file WORKSPACE/REPO path/to/file.yaml --ref main
+bb repo file WORKSPACE/REPO path/to/file.yaml --ref abc1234
+
+# Read from the current repo (auto-detected from git remote)
+bb repo file path/to/file.yaml
 ```
 
 ### Listing Pull Requests
@@ -271,6 +281,7 @@ bb pr reopen 42
 | `bb repo view [REPO]` | View repository details |
 | `bb repo clone REPO [dir]` | Clone a repository locally |
 | `bb repo create` | Create a new repository |
+| `bb repo file REPO path` | Print raw file content from a repository |
 | `bb auth login` | Authenticate with Bitbucket (Cloud or Server/DC) |
 | `bb auth logout` | Remove saved credentials |
 | `bb auth status` | Show current auth info and provider |

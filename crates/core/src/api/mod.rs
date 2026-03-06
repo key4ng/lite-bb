@@ -234,4 +234,17 @@ impl ApiClient {
             Self::Server(s) => s.create_repo(workspace, slug, description, is_private).await,
         }
     }
+
+    pub async fn get_file(
+        &self,
+        workspace: &str,
+        repo: &str,
+        path: &str,
+        ref_: Option<&str>,
+    ) -> Result<String, ApiError> {
+        match self {
+            Self::Cloud(c) => c.get_file(workspace, repo, path, ref_).await,
+            Self::Server(s) => s.get_file(workspace, repo, path, ref_).await,
+        }
+    }
 }

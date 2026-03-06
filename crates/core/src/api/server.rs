@@ -410,4 +410,24 @@ impl ServerClient {
         let dc_repo: DcRepo = self.http.post(&url, &body).await?;
         Ok(dc_repo.into_repo_info(None))
     }
+
+    pub async fn get_file(
+        &self,
+        project: &str,
+        repo: &str,
+        path: &str,
+        ref_: Option<&str>,
+    ) -> Result<String, ApiError> {
+        let base = if project.starts_with('~') {
+            let username = &project[1..];
+            format!("{}/users/{}/repos/{}/raw/{}", self.base_url, username, repo, path)
+        } else {
+            format!("{}/projects/{}/repos/{}/raw/{}", self.base_url, project, repo, path)
+        };
+        let url = match ref_ {
+            Some(r) => format!("{}?at={}", base, urlencoding::encode(r)),
+            None => base,
+        };
+        self.http.get_text(&url).await
+    }
 }

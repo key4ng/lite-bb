@@ -265,4 +265,19 @@ impl CloudClient {
         let r: CloudRepo = self.http.post(&url, &body).await?;
         Ok(r.into_repo_info())
     }
+
+    pub async fn get_file(
+        &self,
+        workspace: &str,
+        repo: &str,
+        path: &str,
+        ref_: Option<&str>,
+    ) -> Result<String, ApiError> {
+        let commit = ref_.unwrap_or("HEAD");
+        let url = format!(
+            "{}/repositories/{}/{}/src/{}/{}",
+            self.base_url, workspace, repo, commit, path
+        );
+        self.http.get_text(&url).await
+    }
 }
