@@ -8,8 +8,8 @@ use crate::models::*;
 const BASE_URL: &str = "https://api.bitbucket.org/2.0";
 
 pub struct CloudClient {
-    http: HttpClient,
-    base_url: String,
+    pub(crate) http: HttpClient,
+    pub(crate) base_url: String,
 }
 
 impl CloudClient {

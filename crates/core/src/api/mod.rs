@@ -234,4 +234,41 @@ impl ApiClient {
             Self::Server(s) => s.create_repo(workspace, slug, description, is_private).await,
         }
     }
+
+    /// Base URL for internal API calls (includes /rest/api/1.0 for Server).
+    pub fn api_base_url(&self) -> &str {
+        match self {
+            Self::Cloud(c) => &c.base_url,
+            Self::Server(s) => &s.base_url,
+        }
+    }
+
+    /// Root URL for bb api passthrough — Server uses the server root so users
+    /// can access any REST namespace (search, api/1.0, etc.).
+    pub fn api_passthrough_base(&self) -> String {
+        match self {
+            Self::Cloud(c) => c.base_url.clone(),
+            Self::Server(s) => s.base_url
+                .trim_end_matches("/rest/api/1.0")
+                .to_string(),
+        }
+    }
+
+    /// Generic passthrough request — used by `bb api`.
+    pub async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&serde_json::Value>,
+        extra_headers: &[(String, String)],
+    ) -> Result<(u16, String), crate::api::client::ApiError> {
+        let base = self.api_passthrough_base();
+        let base = base.trim_end_matches('/');
+        let path = path.trim_start_matches('/');
+        let url = format!("{}/{}", base, path.trim_start_matches('/'));
+        match self {
+            Self::Cloud(c) => c.http.request(method, &url, body, extra_headers).await,
+            Self::Server(s) => s.http.request(method, &url, body, extra_headers).await,
+        }
+    }
 }

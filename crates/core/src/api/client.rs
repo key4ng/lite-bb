@@ -101,3 +101,40 @@ impl HttpClient {
         Ok(resp.json().await?)
     }
 }
+
+impl HttpClient {
+    /// Generic request — returns (status_code, body_text).
+    /// Used by `bb api` for raw passthrough.
+    pub async fn request(
+        &self,
+        method: &str,
+        url: &str,
+        body: Option<&serde_json::Value>,
+        extra_headers: &[(String, String)],
+    ) -> Result<(u16, String), ApiError> {
+        let mut req = match method.to_uppercase().as_str() {
+            "GET"    => self.http.get(url),
+            "POST"   => self.http.post(url),
+            "PUT"    => self.http.put(url),
+            "PATCH"  => self.http.patch(url),
+            "DELETE" => self.http.delete(url),
+            other    => return Err(ApiError::Api {
+                status: 0,
+                message: format!("unsupported method: {other}"),
+            }),
+        };
+
+        for (k, v) in extra_headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+
+        if let Some(b) = body {
+            req = req.json(b);
+        }
+
+        let resp = req.send().await?;
+        let status = resp.status().as_u16();
+        let text = resp.text().await?;
+        Ok((status, text))
+    }
+}
