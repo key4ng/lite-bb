@@ -8,6 +8,7 @@ use server::ServerClient;
 
 use crate::auth::Credentials;
 use crate::config::Provider;
+use crate::models::repo::RepoInfo;
 use crate::models::search::CodeResult;
 use crate::models::*;
 
@@ -199,6 +200,38 @@ impl ApiClient {
             Self::Server(s) => {
                 s.search_code(repo, query, limit, extension, filename).await
             }
+        }
+    }
+
+    pub async fn list_repos(
+        &self,
+        workspace: &str,
+        limit: u32,
+        visibility: Option<&str>,
+    ) -> Result<Vec<RepoInfo>, ApiError> {
+        match self {
+            Self::Cloud(c) => c.list_repos(workspace, limit, visibility).await,
+            Self::Server(s) => s.list_repos(workspace, limit, visibility).await,
+        }
+    }
+
+    pub async fn get_repo(&self, workspace: &str, repo: &str) -> Result<RepoInfo, ApiError> {
+        match self {
+            Self::Cloud(c) => c.get_repo(workspace, repo).await,
+            Self::Server(s) => s.get_repo(workspace, repo).await,
+        }
+    }
+
+    pub async fn create_repo(
+        &self,
+        workspace: &str,
+        slug: &str,
+        description: Option<String>,
+        is_private: bool,
+    ) -> Result<RepoInfo, ApiError> {
+        match self {
+            Self::Cloud(c) => c.create_repo(workspace, slug, description, is_private).await,
+            Self::Server(s) => s.create_repo(workspace, slug, description, is_private).await,
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::config::Provider;
 use crate::models::search::{
     CodeResult, ServerCodeEntity, ServerSearchEntities, ServerSearchRequest, ServerSearchResponse,
 };
+use crate::models::repo::{CreateRepoServer, DcRepo, RepoInfo};
 use crate::models::server::*;
 use crate::models::*;
 
@@ -333,5 +334,80 @@ impl ServerClient {
         }
 
         Ok(results)
+    }
+
+    // --- Repo methods ---
+
+    pub async fn list_repos(
+        &self,
+        project: &str,
+        limit: u32,
+        visibility: Option<&str>,
+    ) -> Result<Vec<RepoInfo>, ApiError> {
+        // Personal repos use /users/{username}/repos, projects use /projects/{key}/repos
+        let url = if project.starts_with('~') {
+            let username = &project[1..];
+            format!("{}/users/{}/repos?limit={}", self.base_url, username, limit)
+        } else {
+            format!("{}/projects/{}/repos?limit={}", self.base_url, project, limit)
+        };
+        let resp: DcPaginated<DcRepo> = self.http.get(&url).await?;
+        let mut repos: Vec<RepoInfo> = resp
+            .values
+            .into_iter()
+            .map(|r| r.into_repo_info(None))
+            .collect();
+        if let Some(v) = visibility {
+            match v {
+                "public" => repos.retain(|r| !r.is_private),
+                "private" => repos.retain(|r| r.is_private),
+                _ => {}
+            }
+        }
+        Ok(repos)
+    }
+
+    pub async fn get_repo(&self, project: &str, repo: &str) -> Result<RepoInfo, ApiError> {
+        let url = if project.starts_with('~') {
+            let username = &project[1..];
+            format!("{}/users/{}/repos/{}", self.base_url, username, repo)
+        } else {
+            format!("{}/projects/{}/repos/{}", self.base_url, project, repo)
+        };
+        let dc_repo: DcRepo = self.http.get(&url).await?;
+
+        // Fetch default branch separately
+        let branch_url = format!("{}/default-branch", url);
+        let default_branch = self
+            .http
+            .get::<DcRef>(&branch_url)
+            .await
+            .ok()
+            .map(|b| b.display_id);
+
+        Ok(dc_repo.into_repo_info(default_branch))
+    }
+
+    pub async fn create_repo(
+        &self,
+        project: &str,
+        name: &str,
+        description: Option<String>,
+        _is_private: bool,
+    ) -> Result<RepoInfo, ApiError> {
+        let url = if project.starts_with('~') {
+            let username = &project[1..];
+            format!("{}/users/{}/repos", self.base_url, username)
+        } else {
+            format!("{}/projects/{}/repos", self.base_url, project)
+        };
+        let body = CreateRepoServer {
+            name: name.to_string(),
+            scm_id: "git".to_string(),
+            forkable: true,
+            description,
+        };
+        let dc_repo: DcRepo = self.http.post(&url, &body).await?;
+        Ok(dc_repo.into_repo_info(None))
     }
 }

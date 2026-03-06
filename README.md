@@ -2,7 +2,7 @@
 
 Because sometimes you want `gh`, but your company uses Bitbucket.
 
-`lite-bb` is a lightweight, `gh`-style command-line tool for managing Bitbucket pull requests. It brings the simplicity and ergonomics of the GitHub CLI to Bitbucket — whether you're on **Bitbucket Cloud** or running **Bitbucket Server / Data Center** on-prem.
+`lite-bb` is a lightweight, `gh`-style command-line tool for managing Bitbucket repositories and pull requests. It brings the simplicity and ergonomics of the GitHub CLI to Bitbucket — whether you're on **Bitbucket Cloud** or running **Bitbucket Server / Data Center** on-prem.
 
 Built for developers who live in the terminal, CI/CD pipelines that need scriptable PR workflows, and LLM agents that benefit from structured `--json` output.
 
@@ -11,6 +11,7 @@ Built for developers who live in the terminal, CI/CD pipelines that need scripta
 - **Familiar interface** — if you know `gh pr`, you already know `bb pr`. Same commands, same flags, same muscle memory.
 - **Cloud + on-prem** — works with both Bitbucket Cloud and Bitbucket Server / Data Center. Auto-detects your instance type from the git remote.
 - **Zero-config start** — auto-detects workspace, repo, and branch from your git context. Just `cd` into your repo and go.
+- **Repository management** — `bb repo list/view/clone/create` manages repos the same way `gh repo` does.
 - **Code search** — `bb search code` searches across your workspace or a specific repo, with filters for extension and filename.
 - **Machine-readable output** — every command supports `--json` for scripting, piping, and LLM agent consumption.
 - **Credential verification** — `bb auth login` validates your token against the API before saving, so you catch auth issues immediately.
@@ -46,13 +47,19 @@ This compiles and installs the `bb` binary to `~/.cargo/bin/`.
 # 1. Authenticate (interactive — choose Cloud or Server, enter token)
 bb auth login
 
-# 2. List open PRs in the current repo
+# 2. List your repos
+bb repo list
+
+# 3. Clone a repo
+bb repo clone myworkspace/my-repo
+
+# 4. List open PRs in the current repo
 bb pr list
 
-# 3. Create a PR from your current branch
+# 5. Create a PR from your current branch
 bb pr create --title "feat: add user authentication"
 
-# 4. View PR details (human-readable or JSON)
+# 6. View PR details (human-readable or JSON)
 bb pr view 42
 bb pr view 42 --json
 ```
@@ -102,6 +109,34 @@ The config file is stored at `~/.config/bb/config.yml` and respects the `XDG_CON
 ## Usage
 
 All commands auto-detect the workspace and repository from your git remote. You can override this with `-R WORKSPACE/REPO` (or `-R PROJECT/REPO` for Server/DC).
+
+### Repositories
+
+```bash
+# List repos in your workspace
+bb repo list
+
+# List with visibility filter
+bb repo list --visibility private
+
+# View a repo
+bb repo view myworkspace/my-repo
+
+# Open in browser
+bb repo view --web
+
+# Clone a repo (resolves clone URL from API)
+bb repo clone myworkspace/my-repo
+
+# Clone into a specific directory, with extra git flags
+bb repo clone myworkspace/my-repo ./local-dir -- --depth 1
+
+# Create a new private repo
+bb repo create --name my-new-repo --description "My project"
+
+# Create a public repo and clone it immediately
+bb repo create --name my-new-repo --public --clone
+```
 
 ### Listing Pull Requests
 
@@ -232,6 +267,10 @@ bb pr reopen 42
 
 | Command | Description |
 |---------|-------------|
+| `bb repo list [owner]` | List repositories in a workspace or project |
+| `bb repo view [REPO]` | View repository details |
+| `bb repo clone REPO [dir]` | Clone a repository locally |
+| `bb repo create` | Create a new repository |
 | `bb auth login` | Authenticate with Bitbucket (Cloud or Server/DC) |
 | `bb auth logout` | Remove saved credentials |
 | `bb auth status` | Show current auth info and provider |

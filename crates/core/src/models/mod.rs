@@ -1,3 +1,4 @@
+pub mod repo;
 pub mod search;
 pub mod server;
 
