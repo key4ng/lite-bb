@@ -9,8 +9,8 @@ use crate::models::server::*;
 use crate::models::*;
 
 pub struct ServerClient {
-    http: HttpClient,
-    base_url: String,
+    pub(crate) http: HttpClient,
+    pub(crate) base_url: String,
 }
 
 impl ServerClient {
