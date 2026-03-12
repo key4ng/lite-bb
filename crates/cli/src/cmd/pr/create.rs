@@ -30,10 +30,12 @@ pub async fn run(
                 name: source_branch,
             },
             repository: None,
+            commit: None,
         },
         destination: base.map(|b| Destination {
             branch: Branch { name: b },
             repository: None,
+            commit: None,
         }),
         description: body,
         close_source_branch: None,

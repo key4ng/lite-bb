@@ -23,6 +23,7 @@ pub async fn run(
         destination: base.map(|b| Destination {
             branch: Branch { name: b },
             repository: None,
+            commit: None,
         }),
     };
 

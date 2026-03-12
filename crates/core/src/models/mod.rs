@@ -38,7 +38,15 @@ pub struct Repository {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Destination {
     pub branch: Branch,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<Repository>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit: Option<CommitRef>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommitRef {
+    pub hash: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
