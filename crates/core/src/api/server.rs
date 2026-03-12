@@ -234,9 +234,18 @@ impl ServerClient {
         body: &CreateComment,
     ) -> Result<Comment, ApiError> {
         let url = self.pr_url(project, repo, &format!("/{id}/comments"));
-        let dc_body = serde_json::json!({
+        let mut dc_body = serde_json::json!({
             "text": body.content.raw.as_deref().unwrap_or("")
         });
+        if let Some(inline) = &body.inline {
+            dc_body["anchor"] = serde_json::json!({
+                "diffType": "EFFECTIVE",
+                "path": inline.path,
+                "line": inline.to,
+                "lineType": "CONTEXT",
+                "fileType": "TO"
+            });
+        }
         let dc_comment: DcComment = self.http.post(&url, &dc_body).await?;
         Ok(dc_comment.into())
     }

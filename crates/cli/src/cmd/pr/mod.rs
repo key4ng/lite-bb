@@ -2,6 +2,7 @@ mod checkout;
 mod checks;
 mod close;
 mod comment;
+mod comments;
 mod create;
 mod diff;
 mod edit;
@@ -118,18 +119,27 @@ pub enum PrCommands {
         #[arg(short = 'B', long)]
         base: Option<String>,
     },
-    /// Add a review (approve/request-changes)
+    /// Add a review (approve/request-changes/comment)
     Review {
         /// Pull request number
         number: u64,
         #[command(flatten)]
         repo: RepoArgs,
         /// Approve the PR
-        #[arg(long)]
+        #[arg(short = 'a', long)]
         approve: bool,
         /// Request changes (unapprove)
-        #[arg(long)]
+        #[arg(short = 'r', long)]
         request_changes: bool,
+        /// Leave a review comment (no approve/reject)
+        #[arg(short = 'c', long)]
+        comment: bool,
+        /// Review body text
+        #[arg(short = 'b', long)]
+        body: Option<String>,
+        /// Read body from file (use "-" for stdin)
+        #[arg(short = 'F', long)]
+        body_file: Option<String>,
     },
     /// Add a comment to a PR
     Comment {
@@ -140,6 +150,21 @@ pub enum PrCommands {
         /// Comment body
         #[arg(short = 'b', long)]
         body: String,
+        /// File path for inline comment
+        #[arg(long)]
+        path: Option<String>,
+        /// Line number for inline comment (new file side)
+        #[arg(long)]
+        line: Option<u32>,
+    },
+    /// List comments on a PR
+    Comments {
+        /// Pull request number
+        number: u64,
+        #[command(flatten)]
+        repo: RepoArgs,
+        #[command(flatten)]
+        json: JsonFlag,
     },
     /// View pull request diff
     Diff {
@@ -177,11 +202,14 @@ pub async fn run(command: PrCommands) -> anyhow::Result<()> {
         PrCommands::Edit { number, repo, title, body, base } => {
             edit::run(number, repo, title, body, base).await
         }
-        PrCommands::Review { number, repo, approve, request_changes } => {
-            review::run(number, repo, approve, request_changes).await
+        PrCommands::Review { number, repo, approve, request_changes, comment, body, body_file } => {
+            review::run(number, repo, approve, request_changes, comment, body, body_file).await
         }
-        PrCommands::Comment { number, repo, body } => {
-            comment::run(number, repo, &body).await
+        PrCommands::Comment { number, repo, body, path, line } => {
+            comment::run(number, repo, &body, path.as_deref(), line).await
+        }
+        PrCommands::Comments { number, repo, json } => {
+            comments::run(number, repo, json).await
         }
         PrCommands::Diff { number, repo } => diff::run(number, repo).await,
         PrCommands::Checks { number, repo, json } => {

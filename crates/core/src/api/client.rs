@@ -25,6 +25,13 @@ impl HttpClient {
             HeaderValue::from_str(&auth_value).expect("invalid auth header"),
         );
 
+        if matches!(provider, Provider::Server { .. }) {
+            headers.insert(
+                "X-Atlassian-Token",
+                HeaderValue::from_static("no-check"),
+            );
+        }
+
         let http = reqwest::Client::builder()
             .default_headers(headers)
             .build()?;

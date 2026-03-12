@@ -106,12 +106,14 @@ impl From<DcPullRequest> for PullRequest {
                     name: pr.from_ref.display_id,
                 },
                 repository: None,
+                commit: pr.from_ref.latest_commit.map(|h| CommitRef { hash: h }),
             },
             destination: Destination {
                 branch: Branch {
                     name: pr.to_ref.display_id,
                 },
                 repository: None,
+                commit: pr.to_ref.latest_commit.map(|h| CommitRef { hash: h }),
             },
             created_on: millis_to_iso(pr.created_date),
             updated_on: millis_to_iso(pr.updated_date),
