@@ -239,6 +239,7 @@ impl ServerClient {
         });
         if let Some(inline) = &body.inline {
             dc_body["anchor"] = serde_json::json!({
+                "diffType": "EFFECTIVE",
                 "path": inline.path,
                 "line": inline.to,
                 "lineType": "ADDED",
