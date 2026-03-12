@@ -242,7 +242,7 @@ impl ServerClient {
                 "diffType": "EFFECTIVE",
                 "path": inline.path,
                 "line": inline.to,
-                "lineType": "ADDED",
+                "lineType": "CONTEXT",
                 "fileType": "TO"
             });
         }
