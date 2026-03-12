@@ -140,6 +140,12 @@ pub enum PrCommands {
         /// Comment body
         #[arg(short = 'b', long)]
         body: String,
+        /// File path for inline comment
+        #[arg(long)]
+        path: Option<String>,
+        /// Line number for inline comment (new file side)
+        #[arg(long)]
+        line: Option<u32>,
     },
     /// View pull request diff
     Diff {
@@ -180,8 +186,8 @@ pub async fn run(command: PrCommands) -> anyhow::Result<()> {
         PrCommands::Review { number, repo, approve, request_changes } => {
             review::run(number, repo, approve, request_changes).await
         }
-        PrCommands::Comment { number, repo, body } => {
-            comment::run(number, repo, &body).await
+        PrCommands::Comment { number, repo, body, path, line } => {
+            comment::run(number, repo, &body, path.as_deref(), line).await
         }
         PrCommands::Diff { number, repo } => diff::run(number, repo).await,
         PrCommands::Checks { number, repo, json } => {
