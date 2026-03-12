@@ -119,18 +119,27 @@ pub enum PrCommands {
         #[arg(short = 'B', long)]
         base: Option<String>,
     },
-    /// Add a review (approve/request-changes)
+    /// Add a review (approve/request-changes/comment)
     Review {
         /// Pull request number
         number: u64,
         #[command(flatten)]
         repo: RepoArgs,
         /// Approve the PR
-        #[arg(long)]
+        #[arg(short = 'a', long)]
         approve: bool,
         /// Request changes (unapprove)
-        #[arg(long)]
+        #[arg(short = 'r', long)]
         request_changes: bool,
+        /// Leave a review comment (no approve/reject)
+        #[arg(short = 'c', long)]
+        comment: bool,
+        /// Review body text
+        #[arg(short = 'b', long)]
+        body: Option<String>,
+        /// Read body from file (use "-" for stdin)
+        #[arg(short = 'F', long)]
+        body_file: Option<String>,
     },
     /// Add a comment to a PR
     Comment {
@@ -193,8 +202,8 @@ pub async fn run(command: PrCommands) -> anyhow::Result<()> {
         PrCommands::Edit { number, repo, title, body, base } => {
             edit::run(number, repo, title, body, base).await
         }
-        PrCommands::Review { number, repo, approve, request_changes } => {
-            review::run(number, repo, approve, request_changes).await
+        PrCommands::Review { number, repo, approve, request_changes, comment, body, body_file } => {
+            review::run(number, repo, approve, request_changes, comment, body, body_file).await
         }
         PrCommands::Comment { number, repo, body, path, line } => {
             comment::run(number, repo, &body, path.as_deref(), line).await
