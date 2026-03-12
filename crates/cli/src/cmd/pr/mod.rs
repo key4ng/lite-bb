@@ -2,6 +2,7 @@ mod checkout;
 mod checks;
 mod close;
 mod comment;
+mod comments;
 mod create;
 mod diff;
 mod edit;
@@ -147,6 +148,15 @@ pub enum PrCommands {
         #[arg(long)]
         line: Option<u32>,
     },
+    /// List comments on a PR
+    Comments {
+        /// Pull request number
+        number: u64,
+        #[command(flatten)]
+        repo: RepoArgs,
+        #[command(flatten)]
+        json: JsonFlag,
+    },
     /// View pull request diff
     Diff {
         /// Pull request number
@@ -188,6 +198,9 @@ pub async fn run(command: PrCommands) -> anyhow::Result<()> {
         }
         PrCommands::Comment { number, repo, body, path, line } => {
             comment::run(number, repo, &body, path.as_deref(), line).await
+        }
+        PrCommands::Comments { number, repo, json } => {
+            comments::run(number, repo, json).await
         }
         PrCommands::Diff { number, repo } => diff::run(number, repo).await,
         PrCommands::Checks { number, repo, json } => {
