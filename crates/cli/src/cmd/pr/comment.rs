@@ -19,6 +19,7 @@ pub async fn run(number: u64, repo: RepoArgs, body: &str) -> Result<()> {
                     markup: Some("markdown".to_string()),
                     html: None,
                 },
+                inline: None,
             },
         )
         .await?;

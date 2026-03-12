@@ -131,6 +131,8 @@ pub struct CommentRef {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateComment {
     pub content: CommentContent,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inline: Option<InlineComment>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
