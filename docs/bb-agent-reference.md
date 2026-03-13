@@ -129,13 +129,15 @@ bb pr comment 42 --path src/handler.py --line 15 --line-type added -b '```sugges
 
 `--path` and `--line` must be used together. `--line-type` specifies which kind of diff line to attach to:
 
+`--line-type` is required when using `--path` and `--line`. For new code you're reviewing, you almost always want `--line-type added`.
+
+
+
 | `--line-type` | `--line` refers to | Use for |
 |---------------|-------------------|---------|
 | `added` | new file line number | `+` lines in the diff |
 | `removed` | old file line number | `-` lines in the diff |
 | `context` | old file line number | unchanged lines in the diff |
-
-If `--line-type` is omitted, defaults to `context`.
 
 #### How to determine the correct `--line` number
 
@@ -168,6 +170,46 @@ bb pr comment 42 -b "Rename this?" --path src/handler.py --line 8 --line-type co
 ```
 
 > **Bitbucket Server note**: For `context` lines, the server always resolves `--line` against the old file, regardless of internal `fileType`. This is a server-side behavior — `added` uses new-file numbers, `removed` and `context` both use old-file numbers.
+
+#### Inline Suggestions
+
+Suggestions let reviewers propose code changes that the PR author can apply with one click. Wrap the replacement code in a `` ```suggestion `` code block:
+
+```bash
+# Single-line suggestion — replaces the line at --line
+bb pr comment 42 --path src/handler.py --line 10 --line-type added \
+  -b '```suggestion
+    if value is not None:
+```'
+```
+
+The suggestion replaces the **entire line** that `--line` points to. The content inside the `` ```suggestion `` block is the replacement text.
+
+Using the diff example from above:
+
+```
+  old:10           -    return value       ← REMOVED
+             new:10 +    if value is None: ← ADDED
+             new:11 +        return None   ← ADDED
+             new:12 +    return value      ← ADDED
+```
+
+```bash
+# Suggest changing "if value is None:" to "if not value:"
+bb pr comment 42 --path src/handler.py --line 10 --line-type added \
+  -b '```suggestion
+    if not value:
+```'
+
+# Suggest on a context line (unchanged code)
+bb pr comment 42 --path src/handler.py --line 8 --line-type context \
+  -b '```suggestion
+    def process(value: Optional[str]):
+```'
+
+```
+
+> **Note**: Suggestions work with `added` and `context` line types only — you cannot suggest on a `removed` line since it's being deleted. The suggestion replaces the single line referenced by `--line`. Bitbucket renders an "Apply suggestion" button on the PR diff view. For `context` suggestions, `--line` refers to the old file line number (see [Bitbucket Server note](#how-to-determine-the-correct---line-number)).
 
 ### List Comments on a PR
 
