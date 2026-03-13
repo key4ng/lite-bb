@@ -129,6 +129,12 @@ pub struct InlineComment {
     pub from: Option<u32>,
     pub to: Option<u32>,
     pub path: String,
+    /// Line type: "added", "removed", or "context"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_type: Option<String>,
+    /// File type: "to" (new file) or "from" (old file). Required for context lines.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_type: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

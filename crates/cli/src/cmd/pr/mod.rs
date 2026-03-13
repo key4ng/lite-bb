@@ -153,9 +153,12 @@ pub enum PrCommands {
         /// File path for inline comment
         #[arg(long)]
         path: Option<String>,
-        /// Line number for inline comment (new file side)
+        /// Line number for inline comment
         #[arg(long)]
         line: Option<u32>,
+        /// Line type: added, removed, or context
+        #[arg(long)]
+        line_type: Option<String>,
     },
     /// List comments on a PR
     Comments {
@@ -205,8 +208,8 @@ pub async fn run(command: PrCommands) -> anyhow::Result<()> {
         PrCommands::Review { number, repo, approve, request_changes, comment, body, body_file } => {
             review::run(number, repo, approve, request_changes, comment, body, body_file).await
         }
-        PrCommands::Comment { number, repo, body, path, line } => {
-            comment::run(number, repo, &body, path.as_deref(), line).await
+        PrCommands::Comment { number, repo, body, path, line, line_type } => {
+            comment::run(number, repo, &body, path.as_deref(), line, line_type.as_deref()).await
         }
         PrCommands::Comments { number, repo, json } => {
             comments::run(number, repo, json).await

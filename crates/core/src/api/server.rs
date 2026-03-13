@@ -246,23 +246,61 @@ impl ServerClient {
             "text": body.content.raw.as_deref().unwrap_or("")
         });
         if let Some(inline) = &body.inline {
+            let (line_type, file_type, line) = if let (Some(lt), Some(ft)) = (&inline.line_type, &inline.file_type) {
+                // Use explicit line_type/file_type when provided
+                let lt_upper = lt.to_uppercase();
+                let ft_upper = ft.to_uppercase();
+                let line = inline.to.or(inline.from);
+                (lt_upper, ft_upper, line)
+            } else if let Some(lt) = &inline.line_type {
+                // line_type without file_type — derive file_type
+                match lt.as_str() {
+                    "added" => ("ADDED".to_string(), "TO".to_string(), inline.to),
+                    "removed" => ("REMOVED".to_string(), "FROM".to_string(), inline.from),
+                    "context" => ("CONTEXT".to_string(), "TO".to_string(), inline.to.or(inline.from)),
+                    _ => ("CONTEXT".to_string(), "TO".to_string(), inline.to.or(inline.from)),
+                }
+            } else {
+                // Fallback: infer from from/to fields
+                match (inline.from, inline.to) {
+                    (Some(_), None) => ("REMOVED".to_string(), "FROM".to_string(), inline.from),
+                    (None, Some(_)) => ("ADDED".to_string(), "TO".to_string(), inline.to),
+                    (Some(_), Some(_)) => ("CONTEXT".to_string(), "TO".to_string(), inline.to),
+                    (None, None) => ("ADDED".to_string(), "TO".to_string(), None),
+                }
+            };
             dc_body["anchor"] = serde_json::json!({
                 "diffType": "EFFECTIVE",
                 "path": inline.path,
-                "line": inline.to,
-                "lineType": "ADDED",
-                "fileType": "TO"
+                "line": line,
+                "lineType": line_type,
+                "fileType": file_type
             });
         }
         let mut dc_comment: DcComment = self.http.post(&url, &dc_body).await?;
         // Server comment endpoint doesn't return anchor — reconstruct from request
         if dc_comment.anchor.is_none() {
             if let Some(inline) = &body.inline {
+                let (line_type, file_type) = if let Some(lt) = &inline.line_type {
+                    let ft = inline.file_type.clone().unwrap_or_else(|| match lt.as_str() {
+                        "added" => "TO".to_string(),
+                        "removed" => "FROM".to_string(),
+                        _ => "TO".to_string(),
+                    });
+                    (lt.to_uppercase(), ft.to_uppercase())
+                } else {
+                    match (inline.from, inline.to) {
+                        (Some(_), None) => ("REMOVED".to_string(), "FROM".to_string()),
+                        (None, Some(_)) => ("ADDED".to_string(), "TO".to_string()),
+                        (Some(_), Some(_)) => ("CONTEXT".to_string(), "TO".to_string()),
+                        (None, None) => ("ADDED".to_string(), "TO".to_string()),
+                    }
+                };
                 dc_comment.anchor = Some(DcAnchor {
                     path: Some(inline.path.clone()),
-                    line: inline.to,
-                    line_type: Some("ADDED".to_string()),
-                    file_type: Some("TO".to_string()),
+                    line: inline.to.or(inline.from),
+                    line_type: Some(line_type),
+                    file_type: Some(file_type),
                 });
             }
         }
