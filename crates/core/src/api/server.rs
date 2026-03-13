@@ -212,8 +212,16 @@ impl ServerClient {
             .values
             .into_iter()
             .filter(|a| a.action == "COMMENTED")
-            .filter_map(|a| a.comment)
-            .map(Comment::from)
+            .filter_map(|a| {
+                let anchor = a.comment_anchor;
+                a.comment.map(|mut c| {
+                    // The anchor lives on the activity, not the comment — merge it in
+                    if c.anchor.is_none() {
+                        c.anchor = anchor;
+                    }
+                    Comment::from(c)
+                })
+            })
             .collect();
         let size = comments.len() as u32;
         Ok(Paginated {
@@ -242,11 +250,22 @@ impl ServerClient {
                 "diffType": "EFFECTIVE",
                 "path": inline.path,
                 "line": inline.to,
-                "lineType": "CONTEXT",
+                "lineType": "ADDED",
                 "fileType": "TO"
             });
         }
-        let dc_comment: DcComment = self.http.post(&url, &dc_body).await?;
+        let mut dc_comment: DcComment = self.http.post(&url, &dc_body).await?;
+        // Server comment endpoint doesn't return anchor — reconstruct from request
+        if dc_comment.anchor.is_none() {
+            if let Some(inline) = &body.inline {
+                dc_comment.anchor = Some(DcAnchor {
+                    path: Some(inline.path.clone()),
+                    line: inline.to,
+                    line_type: Some("ADDED".to_string()),
+                    file_type: Some("TO".to_string()),
+                });
+            }
+        }
         Ok(dc_comment.into())
     }
 

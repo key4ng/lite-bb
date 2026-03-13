@@ -184,6 +184,7 @@ pub struct DcActivity {
     pub id: u64,
     pub action: String,
     pub comment: Option<DcComment>,
+    pub comment_anchor: Option<DcAnchor>,
 }
 
 #[derive(Debug, Deserialize)]
