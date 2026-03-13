@@ -14,7 +14,9 @@ pub async fn run(
 ) -> Result<()> {
     let inline = match (path, line) {
         (Some(p), Some(l)) => {
-            let lt = line_type.unwrap_or("context");
+            let lt = line_type.ok_or_else(|| {
+                anyhow::anyhow!("--line-type (added|removed|context) is required for inline comments")
+            })?;
             let (from, to) = match lt {
                 "added" => (None, Some(l)),
                 "removed" => (Some(l), None),
