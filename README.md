@@ -18,6 +18,15 @@ Built for developers who live in the terminal, CI/CD pipelines that need scripta
 - **Credential verification** — `bb auth login` validates your token against the API before saving, so you catch auth issues immediately.
 - **Easy install** — distributed as a pre-built binary via PyPI. No Rust toolchain needed — just `pip install lite-bb`.
 
+## Claude Code Plugin
+
+`lite-bb` ships a [Claude Code](https://claude.com/claude-code) skill that teaches Claude to use `bb` instead of `gh` when working with Bitbucket repos. It covers the full CLI surface — auth, PRs, code review, repos, search, and raw API access.
+
+```bash
+/plugin marketplace add https://github.com/key4ng/lite-bb
+/plugin install lite-bb
+```
+
 ## Install
 
 The recommended way to install `lite-bb` is via pip or uv. This downloads a pre-built native binary for your platform — no Rust toolchain required.
