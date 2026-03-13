@@ -1,0 +1,12 @@
+{
+  "name": "lite-bb",
+  "description": "Use the lite-bb (bb) CLI for Bitbucket operations — PRs, repos, code review, search, and raw API access. The gh CLI equivalent for Bitbucket Cloud and Server.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Keyang Ru",
+    "email": "rukeyang@gmail.com"
+  },
+  "homepage": "https://github.com/key4ng/lite-bb",
+  "repository": "https://github.com/key4ng/lite-bb",
+  "license": "MIT"
+}
