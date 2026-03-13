@@ -112,16 +112,62 @@ Flags: `-a`/`--approve`, `-r`/`--request-changes`, `-c`/`--comment` (mutually ex
 # PR-level comment
 bb pr comment 42 -b "Overall looks good"
 
-# Inline comment on a specific file and line
-bb pr comment 42 -b "This could be None" --path src/handler.py --line 15
+# Inline comment on an added line (new file line number)
+bb pr comment 42 -b "This could be None" --path src/handler.py --line 15 --line-type added
+
+# Inline comment on a removed line (old file line number)
+bb pr comment 42 -b "Why remove this?" --path src/handler.py --line 20 --line-type removed
+
+# Inline comment on a context/unchanged line (old file line number)
+bb pr comment 42 -b "Note about this" --path src/handler.py --line 10 --line-type context
 
 # Inline suggestion (use suggestion code block)
-bb pr comment 42 --path src/handler.py --line 15 -b '```suggestion
+bb pr comment 42 --path src/handler.py --line 15 --line-type added -b '```suggestion
     return handle_none_case(value)
 ```'
 ```
 
-`--path` and `--line` must be used together. `--line` refers to the line number in the new (destination) file.
+`--path` and `--line` must be used together. `--line-type` specifies which kind of diff line to attach to:
+
+| `--line-type` | `--line` refers to | Use for |
+|---------------|-------------------|---------|
+| `added` | new file line number | `+` lines in the diff |
+| `removed` | old file line number | `-` lines in the diff |
+| `context` | old file line number | unchanged lines in the diff |
+
+If `--line-type` is omitted, defaults to `context`.
+
+#### How to determine the correct `--line` number
+
+The `--line` number must match the line's position on the correct side of the diff:
+
+```
+--- a/src/handler.py    (old file / FROM side)
++++ b/src/handler.py    (new file / TO side)
+@@ -8,7 +8,9 @@
+  old:8  new:8    def process(value):     ← CONTEXT: use old line 8
+  old:9  new:9        validate(value)     ← CONTEXT: use old line 9
+  old:10           -    return value       ← REMOVED: use old line 10
+             new:10 +    if value is None: ← ADDED: use new line 10
+             new:11 +        return None   ← ADDED: use new line 11
+             new:12 +    return value      ← ADDED: use new line 12
+  old:11 new:13       log(value)          ← CONTEXT: use old line 11
+```
+
+Examples from the diff above:
+
+```bash
+# Comment on the added "if value is None:" line
+bb pr comment 42 -b "Good guard" --path src/handler.py --line 10 --line-type added
+
+# Comment on the removed "return value" line
+bb pr comment 42 -b "Why remove?" --path src/handler.py --line 10 --line-type removed
+
+# Comment on the unchanged "def process(value):" line
+bb pr comment 42 -b "Rename this?" --path src/handler.py --line 8 --line-type context
+```
+
+> **Bitbucket Server note**: For `context` lines, the server always resolves `--line` against the old file, regardless of internal `fileType`. This is a server-side behavior — `added` uses new-file numbers, `removed` and `context` both use old-file numbers.
 
 ### List Comments on a PR
 
@@ -196,10 +242,10 @@ bb pr diff 42
 bb pr comments 42 --json
 
 # 4. Post inline comments on issues found
-bb pr comment 42 -b "Potential null dereference" --path src/main.py --line 42
+bb pr comment 42 -b "Potential null dereference" --path src/main.py --line 42 --line-type added
 
 # 5. Post inline suggestions
-bb pr comment 42 --path src/main.py --line 42 -b '```suggestion
+bb pr comment 42 --path src/main.py --line 42 --line-type added -b '```suggestion
     if value is not None:
         process(value)
 ```'

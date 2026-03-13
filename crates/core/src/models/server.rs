@@ -156,10 +156,16 @@ pub struct DcAnchor {
 impl From<DcComment> for Comment {
     fn from(c: DcComment) -> Self {
         let inline = c.anchor.and_then(|a| {
-            a.path.map(|path| InlineComment {
-                from: None,
-                to: a.line,
-                path,
+            a.path.map(|path| {
+                let is_from = a.line_type.as_deref() == Some("REMOVED")
+                    || a.file_type.as_deref() == Some("FROM");
+                InlineComment {
+                    from: if is_from { a.line } else { None },
+                    to: if is_from { None } else { a.line },
+                    path,
+                    line_type: a.line_type.map(|s| s.to_lowercase()),
+                    file_type: a.file_type.map(|s| s.to_lowercase()),
+                }
             })
         });
         Comment {
