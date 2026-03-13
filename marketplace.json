@@ -1,0 +1,15 @@
+{
+  "name": "lite-bb-marketplace",
+  "description": "Claude Code plugins for Bitbucket CLI workflows",
+  "plugins": [
+    {
+      "name": "lite-bb",
+      "description": "Use the lite-bb (bb) CLI for Bitbucket operations — PRs, repos, code review, search, and raw API access. The gh CLI equivalent for Bitbucket Cloud and Server.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/key4ng/lite-bb.git",
+        "path": "skill"
+      }
+    }
+  ]
+}
